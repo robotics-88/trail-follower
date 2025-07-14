@@ -1,0 +1,15 @@
+<launch>
+
+    <arg name="point_cloud_aggregated" default="/cloud_to_use"/>
+
+    <node pkg="trail_follower" exec="trail_follower_node" respawn="false" output="screen">
+        <param name="pub_rate" value="1.0"/> <!-- Hz-->
+        <param name="point_cloud_topic" value="$(var point_cloud_aggregated)"/>
+        <param name="segment_distance_threshold" value="0.1"/>
+        <param name="pmf_max_window_size" value="10"/>
+        <param name="pmf_slope" value="1.0"/>
+        <param name="pmf_initial_distance" value="0.25"/>
+        <param name="pmf_max_distance" value="1.0"/>
+    </node>
+
+</launch>
