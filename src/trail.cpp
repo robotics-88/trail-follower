@@ -26,7 +26,8 @@ using std::placeholders::_1;
 namespace trail_follower {
 
 Trail::Trail()
-    : Node("trail_detection"),
+    : Node("trail_follower"),
+      is_active_(false),
       planning_horizon_(10.0),
       trail_goal_enabled_(false),
       pub_rate_(2.0),
@@ -88,9 +89,13 @@ Trail::Trail()
     trail_goal_pub_ =
         this->create_publisher<geometry_msgs::msg::PoseStamped>("/explorable_goal", 10);
 
+    // TODO remove service, replace with pub/sub or param cb
     trail_enabled_service_ = this->create_service<rcl_interfaces::srv::SetParametersAtomically>(
         "trail_enabled_service", std::bind(&Trail::setTrailsEnabled, this, std::placeholders::_1,
                                            std::placeholders::_2, std::placeholders::_3));
+
+    param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
+    startParamMonitoring(); // Use timer to wait for task_manager to load perception registry
 }
 
 Trail::~Trail() {}
@@ -100,6 +105,9 @@ void Trail::localPositionCallback(const geometry_msgs::msg::PoseStamped::SharedP
 }
 
 void Trail::pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+    if (!is_active_) {
+        return;
+    }
     // Convert ROS msg to PCL and store
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
     pcl::fromROSMsg(*msg, *cloud);
@@ -114,6 +122,35 @@ void Trail::pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr ms
         last_pub_time_ = this->get_clock()->now();
     }
 }
+
+void Trail::parameterCallback(const rclcpp::Parameter &param) {
+    is_active_ = param.as_bool();
+    RCLCPP_INFO(this->get_logger(), "Trail follower node active: %s", is_active_ ? "true" : "false");
+}
+
+void Trail::startParamMonitoring() {
+    param_monitor_timer_ = this->create_wall_timer(
+        std::chrono::seconds(1),
+        [this]() {
+            static bool callback_registered = false;
+
+            if (!callback_registered) {
+                try {
+                    cb_handle_ = param_subscriber_->add_parameter_callback(
+                        "/task_manager/trail_follower/set_node_active",
+                        std::bind(&Trail::parameterCallback, this, std::placeholders::_1),
+                        "task_manager/task_manager"
+                    );
+                    RCLCPP_INFO(this->get_logger(), "✅ Parameter callback registered for task_manager:trail_follower/set_node_active");
+                    callback_registered = true;
+                    param_monitor_timer_->cancel();  // stop retrying
+                } catch (const std::exception &e) {
+                    RCLCPP_WARN(this->get_logger(), "Waiting for task_manager param to become available: %s", e.what());
+                }
+            }
+        });
+}
+
 
 void Trail::doGroundAndTrail(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                              const std_msgs::msg::Header header) {
