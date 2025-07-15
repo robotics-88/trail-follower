@@ -34,7 +34,6 @@ class Trail : public rclcpp::Node {
 
     void localPositionCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
     void pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
-    void parameterCallback(const rclcpp::Parameter &param);
 
   private:
     std::string point_cloud_topic_;
@@ -49,11 +48,6 @@ class Trail : public rclcpp::Node {
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr trail_goal_pub_;
 
     rclcpp::Time last_pub_time_;
-
-    bool is_active_;
-    std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
-    std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_;
-    rclcpp::TimerBase::SharedPtr param_monitor_timer_;
 
     // Main input pointcloud holder
     bool cloud_init_;
@@ -76,7 +70,15 @@ class Trail : public rclcpp::Node {
 
     geometry_msgs::msg::PoseStamped current_pose_;
 
+    // Parameter handling for toggle on/off
+    bool is_active_;
+    std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_;
+    rclcpp::TimerBase::SharedPtr param_monitor_timer_;
+    void parameterCallback(const rclcpp::Parameter &param);
     void startParamMonitoring();
+    // End parameter handling
+
     void doGroundAndTrail(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                           const std_msgs::msg::Header header);
 

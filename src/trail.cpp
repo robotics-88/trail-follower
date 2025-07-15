@@ -27,7 +27,6 @@ namespace trail_follower {
 
 Trail::Trail()
     : Node("trail_follower"),
-      is_active_(false),
       planning_horizon_(10.0),
       trail_goal_enabled_(false),
       pub_rate_(2.0),
@@ -39,7 +38,9 @@ Trail::Trail()
       pmf_max_distance_(3.0),
       last_pub_time_(0, 0, RCL_ROS_TIME),
       cloud_init_(false),
-      has_first_trailpt_(false) {
+      has_first_trailpt_(false),
+      is_active_(false)
+{
     // Get params
     this->declare_parameter("pub_rate", pub_rate_);
     this->declare_parameter("point_cloud_topic", point_cloud_topic_);
